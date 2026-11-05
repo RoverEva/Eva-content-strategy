@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Bilingual (中文 / English) rule-based content strategy planner for creators and small businesses. Runs entirely in the browser.">
+<title>Eva Content Strategy Engine</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23334ad4'/%3E%3Ctext x='16' y='22' font-size='17' font-family='sans-serif' font-weight='700' fill='white' text-anchor='middle'%3EE%3C/text%3E%3C/svg%3E">
+<style>
+:root{font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#182235;background:#f6f7fb}
+*{box-sizing:border-box}
+body{margin:0}
+.wrap{max-width:1000px;margin:30px auto;padding:18px}
+header{display:flex;align-items:center;justify-content:space-between;gap:15px}
+h1{font-size:34px}
+p{color:#586579;line-height:1.65}
+.panel{background:white;border:1px solid #e5e9f0;border-radius:18px;padding:25px;margin-top:20px}
+label{font-weight:600;display:block;margin:15px 0 6px}
+input,textarea,select{width:100%;padding:12px;border:1px solid #cfd6e3;border-radius:9px;font:inherit}
+textarea{min-height:75px}
+button{background:#334ad4;color:white;border:0;padding:12px 17px;border-radius:10px;font-weight:700;cursor:pointer;margin:12px 8px 0 0}
+button.secondary{background:#edf0f7;color:#1b2a48}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+article{border-top:1px solid #e5e9f0;padding:12px 0}
+small{color:#6b7280}
+#lang{width:auto;margin:0}
+.brand{font-weight:750}
+@media(max-width:700px){.grid{grid-template-columns:1fr}h1{font-size:27px}}
+@media print{
+  :root{background:white}
+  header,#form,#result button,footer{display:none!important}
+  .panel{border:0;padding:0}
+  article{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <span class="brand">EVA / CONTENT STRATEGY ENGINE</span>
+    <select id="lang" aria-label="Language / 语言" onchange="switchLang(this.value)">
+      <option value="zh">中文</option>
+      <option value="en">English</option>
+    </select>
+  </header>
+  <h1 data-i="headline"></h1>
+  <p data-i="intro"></p>
+
+  <section class="panel" id="form">
+    <div class="grid">
+      <div><label for="brand" data-i="brand"></label><input id="brand" data-p="brandP"></div>
+      <div><label for="industry" data-i="industry"></label><input id="industry" data-p="industryP"></div>
+    </div>
+    <label for="audience" data-i="audience"></label><textarea id="audience" data-p="audienceP"></textarea>
+    <label for="offer" data-i="offer"></label><textarea id="offer" data-p="offerP"></textarea>
+    <div class="grid">
+      <div>
+        <label for="goal" data-i="goal"></label>
+        <select id="goal">
+          <option value="leads" data-i="leads"></option>
+          <option value="trust" data-i="trust"></option>
+          <option value="sales" data-i="sales"></option>
+          <option value="growth" data-i="growth"></option>
+        </select>
+      </div>
+      <div>
+        <label for="platform" data-i="platform"></label>
+        <select id="platform">
+          <option>抖音 / Douyin</option>
+          <option>小红书 / RedNote</option>
+          <option>YouTube</option>
+          <option>TikTok</option>
+          <option>Instagram</option>
+        </select>
+      </div>
+    </div>
+    <button type="button" onclick="generate()" data-i="generate"></button>
+    <button type="button" class="secondary" onclick="loadDemo()" data-i="demo"></button>
+  </section>
+
+  <section class="panel" id="result" hidden aria-live="polite"></section>
+
+  <footer><p><small data-i="privacy"></small></p></footer>
+</main>
+
+<script>
+/*
+ * Eva Content Strategy Engine — rule-based MVP.
+ * No network requests, no API keys, no dependencies. All text lives in `dict`.
+ * Language can be preset with ?lang=zh or ?lang=en (useful for embedding in a dashboard).
+ */
+const dict = {
+  zh: {
+    pageTitle: 'Eva 内容战略引擎',
+    headline: '先找准方向，再开始拍视频。',
+    intro: '从目标客户与真实问题出发，规划长期内容主线。无需 API 的开源规则式 MVP。',
+    brand: '账号 / 品牌', brandP: '例如：Eva AI 创作者',
+    industry: '行业', industryP: '例如：AI 工具与内容创作',
+    audience: '目标客户', audienceP: '例如：不知道如何定位账号的小企业主',
+    offer: '产品或服务', offerP: '例如：AI 工作台与视频模板',
+    goal: '商业目标', platform: '主要平台',
+    leads: '获客咨询', trust: '建立信任', sales: '产品销售', growth: '精准涨粉',
+    generate: '生成内容战略', demo: '填入示例',
+    privacy: '隐私：输入仅在本机浏览器处理，不上传服务器。建议需结合真实客户反馈验证。',
+    required: '请填写品牌、目标客户和产品或服务',
+    result: '你的内容战略初稿', position: '定位', platformLabel: '平台',
+    pillars: '三条内容主线', competitors: '对标账号研究清单', ideas: '30天视频选题',
+    day: n => `第 ${n} 天`, colon: '：',
+    hook: '开头示例', cta: '行动引导', angle: '内容角度',
+    export: '导出 JSON', print: '打印 / 保存 PDF',
+    limitations: '规则式模板示例；未接入 AI 模型、实时竞品数据或流量预测。',
+    pillarNames: ['痛点诊断', '方法与案例', '产品与转化'],
+    pillarWhy: ['让目标客户认出自己遇到的问题', '通过可执行方法和具体案例建立信任', '解释产品如何回应客户的实际需求'],
+    research: [
+      '找到3–5个服务相同受众的账号，而不只是卖同类产品的账号',
+      '观察各账号最近20条内容的主题、开头和评论问题',
+      '区分高播放内容与可能带来咨询的内容',
+      '学习内容结构与受众需求，不复制他人的文案或素材'
+    ],
+    // 10 topics per pillar → 30 unique ideas
+    topics: [
+      ['为什么你一直发视频，却没有客户来咨询？', '你以为缺的是爆款，其实缺的是内容主线', '每天追热点，为什么账号方向越来越模糊？', '为什么你的内容有人看，却没人咨询？', '目标客户到底关心哪些问题？',
+       '发了很多干货，为什么粉丝还是记不住你？', '客户在评论区反复问的问题，你回答了吗？', '内容方向频繁变化，会给账号带来什么影响？', '为什么只讲产品功能，客户却没有感觉？', '你的目标客户在做决定前，最常卡在哪一步？'],
+      ['用3步梳理一个账号的定位', '同一款产品，如何写出3种痛点开头？', '如何从客户评论中提炼视频选题？', '如何研究对标账号而不照抄？', '把一个客户问题变成完整视频脚本',
+       '一周内容排期怎么做，才能稳定更新？', '一个视频的开头、主体和结尾怎么搭？', '如何复盘一条视频的数据，而不只看播放量？', '把一篇长内容拆成多条短视频', '用客户案例讲清楚一个方法'],
+      ['谁适合使用{offer}？', '购买{offer}之前，客户最担心什么？', '从观看视频到主动咨询，中间缺了哪一步？', '展示一次从客户问题到解决方案的过程', '如何判断{offer}是否适合自己？',
+       '{offer}解决的是哪一个具体问题？', '开始使用{offer}，第一步应该做什么？', '关于{offer}的3个常见误解', '{offer}和其他方案有什么不同？', '客户使用{offer}前后有什么变化？（基于真实反馈）']
+    ],
+    angles: ['问题共鸣', '实操教程', '案例拆解', '常见误区', '决策指南'],
+    hookText: (a, t) => `如果你是${a}，你可能也遇到过：${t}`,
+    ctas: ['邀请观众分享自己的问题', '请观众保存方法并尝试实践', '展示解决路径并邀请进一步了解'],
+    positionText: (b, i, a, g) => `${b}：面向${a}，围绕${i || '相关领域'}分享可执行的方法，以${g}为目标。`
+  },
+  en: {
+    pageTitle: 'Eva Content Strategy Engine',
+    headline: 'Find your direction before creating content.',
+    intro: 'Turn customer needs into a consistent content strategy. An open-source, rule-based MVP that requires no API.',
+    brand: 'Account / Brand', brandP: 'e.g. Eva AI Creator',
+    industry: 'Industry', industryP: 'e.g. AI tools and content creation',
+    audience: 'Target audience', audienceP: 'e.g. small business owners struggling with content direction',
+    offer: 'Product or service', offerP: 'e.g. AI dashboard and video templates',
+    goal: 'Business goal', platform: 'Primary platform',
+    leads: 'Generate leads', trust: 'Build trust', sales: 'Drive sales', growth: 'Grow relevant audience',
+    generate: 'Generate strategy', demo: 'Load example',
+    privacy: 'Privacy: inputs stay in your browser and are not uploaded. Validate recommendations with real customer feedback.',
+    required: 'Please enter your brand, target audience, and product or service.',
+    result: 'Your content strategy draft', position: 'Positioning', platformLabel: 'Platform',
+    pillars: 'Three content pillars', competitors: 'Competitor research checklist', ideas: '30-day video idea plan',
+    day: n => `Day ${n}`, colon: ': ',
+    hook: 'Sample hook', cta: 'Call to action', angle: 'Content angle',
+    export: 'Export JSON', print: 'Print / Save PDF',
+    limitations: 'Rule-based template demonstration. No AI model, live competitor data, or traffic prediction is included.',
+    pillarNames: ['Customer pain points', 'How-to guides & examples', 'Product & conversion'],
+    pillarWhy: ['Help your audience recognize problems they face', 'Build trust with practical steps and concrete examples', 'Connect real customer needs to your product or service'],
+    research: [
+      'Identify 3–5 accounts serving the same audience, not just selling similar products',
+      'Review the themes, hooks, and comment questions in their last 20 posts',
+      'Distinguish high-view posts from posts that may drive qualified inquiries',
+      'Study audience needs and content structure without copying text or media'
+    ],
+    topics: [
+      ['Why do you keep posting but get few customer inquiries?', 'You may not need a viral post—you may need a clear content direction', 'Why can chasing every trend confuse your audience?', 'Why do people watch your videos without contacting you?', 'What questions matter most to your ideal customers?',
+       "Why don't followers remember you after all that useful content?", 'Are you answering the questions customers keep asking in comments?', 'What happens when your content direction keeps changing?', 'Why do product features alone fail to move customers?', 'Where do your ideal customers get stuck before deciding?'],
+      ['Define your account positioning in three steps', 'Three pain-point hooks for the same product', 'Turn customer comments into useful video ideas', 'Research similar accounts without copying their content', 'Turn one customer question into a full video script',
+       'Plan a weekly content schedule you can actually keep', 'Structure a video: hook, body, and ending', "Review a video's results beyond view counts", 'Turn one long piece into several short videos', 'Explain a method through a customer example'],
+      ['Who is {offer} actually for?', 'What worries customers before buying {offer}?', 'What is missing between watching a video and making an inquiry?', 'Show how a real customer problem can be addressed', 'How can customers decide whether {offer} is right for them?',
+       'What specific problem does {offer} solve?', 'What is the first step when starting with {offer}?', 'Three common misconceptions about {offer}', 'How is {offer} different from other options?', 'What changes for customers after using {offer}? (based on real feedback)']
+    ],
+    angles: ['Pain-point story', 'Practical tutorial', 'Case breakdown', 'Common mistake', 'Decision guide'],
+    hookText: (a, t) => `For ${a}: ${t}`,
+    ctas: ['Invite viewers to share their experience', 'Encourage viewers to save and try the steps', 'Show the solution and invite further questions'],
+    positionText: (b, i, a, g) => `${b} serves ${a} with actionable content about ${i || 'their field'}, supporting the goal: ${g}.`
+  }
+};
+
+const SCHEMA_VERSION = 1;
+let language = 'zh', report = null;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function switchLang(l) {
+  if (!dict[l]) l = 'zh';
+  language = l;
+  $('lang').value = l;
+  document.documentElement.lang = l === 'zh' ? 'zh-CN' : 'en';
+  document.title = dict[l].pageTitle;
+  document.querySelectorAll('[data-i]').forEach(e => e.textContent = dict[l][e.dataset.i]);
+  document.querySelectorAll('[data-p]').forEach(e => e.placeholder = dict[l][e.dataset.p]);
+  try { localStorage.setItem('eva-cse-lang', l); } catch (e) {}
+  if (report) render();
+}
+
+function loadDemo() {
+  const x = language === 'zh'
+    ? ['Eva AI 创作者', 'AI 工具与内容创作', '希望建立清晰内容定位的个人创作者和小企业', 'AI 内容工作台与视频模板']
+    : ['Eva AI Creator', 'AI tools and content creation', 'creators and small businesses looking for clear content direction', 'AI content dashboard and video templates'];
+  ['brand', 'industry', 'audience', 'offer'].forEach((id, i) => $(id).value = x[i]);
+}
+
+function generate() {
+  const brand = $('brand').value.trim(), industry = $('industry').value.trim(),
+        audience = $('audience').value.trim(), offer = $('offer').value.trim(),
+        goal = $('goal').value, platform = $('platform').value;
+  if (!brand || !audience || !offer) { alert(dict[language].required); return; }
+  report = {brand, industry, audience, offer, goal, platform};
+  render();
+  $('result').scrollIntoView({behavior: 'smooth'});
+}
+
+function build() {
+  const d = dict[language], {brand, industry, audience, offer, goal, platform} = report;
+  const pillars = d.pillarNames.map((name, i) => ({name, why: d.pillarWhy[i]}));
+  const ideas = [];
+  for (let i = 0; i < 30; i++) {
+    const p = i % 3, n = Math.floor(i / 3);            // n: 0–9, unique topic per pillar
+    const title = d.topics[p][n].replaceAll('{offer}', offer);
+    ideas.push({day: i + 1, pillar: pillars[p].name, title, angle: d.angles[n % 5], hook: d.hookText(audience, title), cta: d.ctas[p]});
+  }
+  return {
+    schemaVersion: SCHEMA_VERSION, generatedAt: new Date().toISOString(), generator: 'rule-based-template',
+    language, brand, industry, audience, offer, goal: d[goal], goalKey: goal, platform,
+    positioning: d.positionText(brand, industry, audience, d[goal]),
+    pillars, competitorResearch: d.research, ideas, limitations: d.limitations
+  };
+}
+
+function render() {
+  const d = dict[language], r = build(), c = d.colon;
+  $('result').hidden = false;
+  $('result').innerHTML =
+    `<h2>${d.result}</h2>` +
+    `<p><strong>${d.position}${c}</strong>${esc(r.positioning)}<br><strong>${d.platformLabel}${c}</strong>${esc(r.platform)}</p>` +
+    `<h3>${d.pillars}</h3>` +
+    r.pillars.map(p => `<article><strong>${esc(p.name)}</strong><p>${esc(p.why)}</p></article>`).join('') +
+    `<h3>${d.competitors}</h3>` +
+    r.competitorResearch.map(s => `<p>✓ ${esc(s)}</p>`).join('') +
+    `<h3>${d.ideas}</h3>` +
+    r.ideas.map(x => `<article><strong>${d.day(x.day)} · ${esc(x.title)}</strong><p>${esc(x.pillar)} / ${d.angle}${c}${esc(x.angle)}<br>${d.hook}${c}${esc(x.hook)}<br>${d.cta}${c}${esc(x.cta)}</p></article>`).join('') +
+    `<p><small>${esc(r.limitations)}</small></p>` +
+    `<button type="button" onclick="download()">${d.export}</button><button type="button" class="secondary" onclick="window.print()">${d.print}</button>`;
+}
+
+function download() {
+  if (!report) return;
+  const blob = new Blob([JSON.stringify(build(), null, 2)], {type: 'application/json'}),
+        url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = `content-strategy-${language}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+(function init() {
+  let l = new URLSearchParams(location.search).get('lang');
+  if (!dict[l]) { try { l = localStorage.getItem('eva-cse-lang'); } catch (e) { l = null; } }
+  switchLang(dict[l] ? l : 'zh');
+})();
+</script>
+</body>
+</html>
